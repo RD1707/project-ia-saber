@@ -57,7 +57,7 @@ document.addEventListener('DOMContentLoaded', () => {
         localStorage.removeItem('token');
         window.location.reload();
     });
-     
+
     function initializeApp() {
         const token = localStorage.getItem('token');
         if (!token) {
@@ -254,10 +254,9 @@ document.addEventListener('DOMContentLoaded', () => {
   const data = await res.json();
   if (res.ok) {
     localStorage.setItem('token', data.token);
-    alert('Login realizado');
-    // Redireciona para a interface principal
-    window.location.href = '/app.html';
-  } else {
+    currentUser = data.user;
+    document.getElementById('loginScreen').style.display = 'none';
+} else {
     alert(data.error);
   }
 });
