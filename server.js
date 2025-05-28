@@ -6,6 +6,8 @@ const { CohereClient } = require('cohere-ai');
 const db = require('./db');
 const jwt = require('jsonwebtoken');
 
+
+
 const app = express();
 const PORT = 3000;
 
