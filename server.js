@@ -276,14 +276,6 @@ app.get('/api/history', authenticateToken, async (req, res) => {
         res.status(500).json({ error: 'Erro ao buscar histórico' });
     }
 });
-        
-        console.log('Histórico enviado ao frontend');
-        res.json(history);
-    } catch (error) {
-        console.error('Erro ao buscar histórico:', error);
-        res.status(500).json({ error: 'Erro ao buscar histórico' });
-    }
-});
 
 app.get('/api/conversation/:id', async (req, res) => {
     try {
