@@ -39,12 +39,7 @@ Analise a seguinte mensagem de um aluno e crie um título curto e descritivo (m�
 
 Mensagem: "${firstMessage}"
 
-Crie um título objetivo e educacional. Exemplos:
-- "Matemática - Equações"
-- "História do Brasil"
-- "Redação - Argumentação"
-- "Química - Tabela Periódica"
-- "Inglês - Present Perfect"
+Crie um título objetivo.
 
 Responda APENAS com o título, sem aspas ou explicações:`;
 
