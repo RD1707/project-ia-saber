@@ -55,8 +55,25 @@ document.addEventListener('DOMContentLoaded', () => {
 
     document.getElementById('logoutBtn').addEventListener('click', () => {
         localStorage.removeItem('token');
-        window.location.reload();
+        window.location.href = '/';
     });
+});
+
+function showLoader() {
+    document.getElementById('loader').style.display = 'block';
+  }
+  
+  function hideLoader() {
+    document.getElementById('loader').style.display = 'none';
+  }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        // Verificar se o usuário está autenticado
+        const token = localStorage.getItem('token');
+        if (!token) {
+            window.location.href = '/';
+            return;
+        }
 
     function initializeApp() {
         const token = localStorage.getItem('token');
