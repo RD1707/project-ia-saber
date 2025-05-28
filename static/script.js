@@ -52,16 +52,44 @@ document.addEventListener('DOMContentLoaded', () => {
     };
     
     initializeApp();
-    
+
+    document.getElementById('logoutBtn').addEventListener('click', () => {
+        localStorage.removeItem('token');
+        window.location.reload();
+    });
+     
     function initializeApp() {
+        const token = localStorage.getItem('token');
+        if (!token) {
+            document.getElementById('loginScreen').style.display = 'flex';
+            document.getElementById('welcomeScreen').style.display = 'none';
+            document.getElementById('appContainer').style.display = 'none';
+            return;
+        }
+    
+        try {
+            const payload = JSON.parse(atob(token.split('.')[1]));
+            currentUser = { id: payload.id, email: payload.email };
+            document.getElementById('loginScreen').style.display = 'none';
+            document.getElementById('welcomeScreen').style.display = 'flex';
+        } catch (err) {
+            console.error('Token inválido ou expirado');
+            localStorage.removeItem('token');
+            document.getElementById('loginScreen').style.display = 'flex';
+            document.getElementById('welcomeScreen').style.display = 'none';
+            document.getElementById('appContainer').style.display = 'none';
+            return;
+        }
+    
         setupEventListeners();
         setupSidebar();
-        setupAuth(); // Adicione esta linha
-        loadUserSettings();    
+        setupAuth();
+        loadUserSettings();
         applySettings();
         carregarHistorico();
         updateAboutStats();
-}
+    }
+    
     
     function setupAuth() {
     const loginForm = document.getElementById('login-form');
