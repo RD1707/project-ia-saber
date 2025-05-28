@@ -19,6 +19,9 @@ async function initializeDatabase() {
         message_count INTEGER DEFAULT 0
       );
 
+      ALTER TABLE conversations
+      ADD COLUMN user_id UUID REFERENCES users(id) ON DELETE CASCADE;
+
       CREATE TABLE IF NOT EXISTS users (
         id UUID PRIMARY KEY,
         name TEXT NOT NULL,
@@ -68,17 +71,17 @@ async function loginUser(email, password) {
   return { id: user.id, name: user.name, email: user.email };
 }
 
-async function createNewConversation(title = 'Nova Conversa') {
+async function createNewConversation(userId, title = 'Nova Conversa') {
   try {
     const id = uuidv4();
     const now = new Date().toISOString();
-    
+
     await pool.query(`
-      INSERT INTO conversations (id, title, created_at, updated_at, message_count) 
-      VALUES ($1, $2, $3, $4, 0)`, 
-      [id, title, now, now]
+      INSERT INTO conversations (id, user_id, title, created_at, updated_at, message_count) 
+      VALUES ($1, $2, $3, $4, $5, 0)`, 
+      [id, userId, title, now, now]
     );
-    
+
     return { 
       id, 
       title, 
@@ -164,25 +167,25 @@ async function deleteConversation(conversationId) {
   }
 }
 
-async function getChatHistory() {
-  try {
-    const res = await pool.query(`
-      SELECT 
-        c.*,
-        (
-          SELECT content FROM messages 
-          WHERE conversation_id = c.id AND role = 'user' 
-          ORDER BY timestamp ASC LIMIT 1
-        ) AS first_message 
-      FROM conversations c 
-      ORDER BY c.updated_at DESC
-    `);
-    
-    return res.rows;
-  } catch (error) {
-    console.error('Erro ao buscar histórico:', error);
-    throw error;
-  }
+async function getChatHistory(userId) {
+    try {
+        const res = await pool.query(`
+            SELECT 
+                c.*,
+                (SELECT content FROM messages 
+                 WHERE conversation_id = c.id 
+                 AND role = 'user' 
+                 ORDER BY timestamp ASC LIMIT 1) AS first_message 
+            FROM conversations c
+            WHERE c.user_id = $1
+            ORDER BY c.updated_at DESC
+        `, [userId]);
+        
+        return res.rows;
+    } catch (error) {
+        console.error('Erro ao buscar histórico:', error);
+        throw error;
+    }
 }
 
 async function clearAllConversations() {
