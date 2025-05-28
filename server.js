@@ -239,9 +239,9 @@ Sempre use linguagem acolhedora, acessível e motivadora. Corrija erros com sens
     }
 });
 
-app.get('/api/history', async (req, res) => {
+app.get('/api/history', authenticateToken, async (req, res) => {
     try {
-        const allConversations = await db.getChatHistory();
+        const allConversations = await db.getChatHistory(req.user.id);
         
         const now = new Date();
         const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -268,6 +268,14 @@ app.get('/api/history', async (req, res) => {
                 history.older.push(conv);
             }
         });
+        
+        console.log('Histórico enviado ao frontend');
+        res.json(history);
+    } catch (error) {
+        console.error('Erro ao buscar histórico:', error);
+        res.status(500).json({ error: 'Erro ao buscar histórico' });
+    }
+});
         
         console.log('Histórico enviado ao frontend');
         res.json(history);
