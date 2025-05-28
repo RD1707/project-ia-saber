@@ -256,6 +256,8 @@ document.addEventListener('DOMContentLoaded', () => {
     localStorage.setItem('token', data.token);
     currentUser = data.user;
     document.getElementById('loginScreen').style.display = 'none';
+    document.getElementById('welcomeScreen').style.display = 'flex';
+    document.getElementById('appContainer').style.display = 'flex';
 } else {
     alert(data.error);
   }
