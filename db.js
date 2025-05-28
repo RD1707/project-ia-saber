@@ -11,17 +11,6 @@ const pool = new Pool({
 async function initializeDatabase() {
   try {
     await pool.query(`
-      CREATE TABLE IF NOT EXISTS conversations (
-        id UUID PRIMARY KEY,
-        title TEXT NOT NULL,
-        created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-        message_count INTEGER DEFAULT 0
-      );
-
-      ALTER TABLE conversations
-      ADD COLUMN user_id UUID REFERENCES users(id) ON DELETE CASCADE;
-
       CREATE TABLE IF NOT EXISTS users (
         id UUID PRIMARY KEY,
         name TEXT NOT NULL,
@@ -30,7 +19,15 @@ async function initializeDatabase() {
         created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
       );
 
-      
+      CREATE TABLE IF NOT EXISTS conversations (
+        id UUID PRIMARY KEY,
+        title TEXT NOT NULL,
+        created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+        message_count INTEGER DEFAULT 0,
+        user_id UUID REFERENCES users(id) ON DELETE CASCADE
+      );
+
       CREATE TABLE IF NOT EXISTS messages (
         id SERIAL PRIMARY KEY,
         conversation_id UUID REFERENCES conversations(id) ON DELETE CASCADE,
