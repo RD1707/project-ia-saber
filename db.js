@@ -1,5 +1,6 @@
 const { Pool } = require('pg');
 const { v4: uuidv4 } = require('uuid');
+const bcrypt = require('bcrypt');
 require('dotenv').config();
 
 const pool = new Pool({
@@ -17,6 +18,15 @@ async function initializeDatabase() {
         updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
         message_count INTEGER DEFAULT 0
       );
+
+      CREATE TABLE IF NOT EXISTS users (
+        id UUID PRIMARY KEY,
+        name TEXT NOT NULL,
+        email TEXT UNIQUE NOT NULL,
+        password_hash TEXT NOT NULL,
+        created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+      );
+
       
       CREATE TABLE IF NOT EXISTS messages (
         id SERIAL PRIMARY KEY,
@@ -35,6 +45,27 @@ async function initializeDatabase() {
     console.error('Erro ao inicializar banco:', error);
     throw error;
   }
+}
+
+async function registerUser(name, email, password) {
+  const id = uuidv4();
+  const password_hash = await bcrypt.hash(password, 10);
+  await pool.query(`
+    INSERT INTO users (id, name, email, password_hash)
+    VALUES ($1, $2, $3, $4)
+  `, [id, name, email, password_hash]);
+  return { id, name, email };
+}
+
+async function loginUser(email, password) {
+  const res = await pool.query(`SELECT * FROM users WHERE email = $1`, [email]);
+  const user = res.rows[0];
+  if (!user) return null;
+
+  const valid = await bcrypt.compare(password, user.password_hash);
+  if (!valid) return null;
+
+  return { id: user.id, name: user.name, email: user.email };
 }
 
 async function createNewConversation(title = 'Nova Conversa') {
@@ -197,5 +228,7 @@ module.exports = {
   clearAllConversations,
   closeConnection,
   testConnection,
-  pool
+  pool,
+  registerUser,
+  loginUser
 };
