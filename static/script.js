@@ -58,25 +58,6 @@ document.addEventListener('DOMContentLoaded', () => {
         setupSidebar();
         setupAuth(); // Adicione esta linha
         loadUserSettings();    
-        // Verificar se está autenticado
-        const token = localStorage.getItem('token');
-        if (token) {
-            try {
-                const payload = JSON.parse(atob(token.split('.')[1]));
-                currentUser = {
-                    id: payload.id,
-                    email: payload.email,
-                    name: payload.name
-                };
-                document.getElementById('loginScreen').style.display = 'none';
-                welcomeScreen.style.display = 'flex';
-            } catch (e) {
-                localStorage.removeItem('token');
-            }
-        } else {
-            document.getElementById('loginScreen').style.display = 'flex';
-            welcomeScreen.style.display = 'none';
-        }        
         applySettings();
         carregarHistorico();
         updateAboutStats();
