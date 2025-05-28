@@ -983,7 +983,7 @@ document.addEventListener('DOMContentLoaded', () => {
         scrollToBottom();
     }
 
-    function typeWriter(element, text, speed = 15) {
+    function typeWriter(element, text, speed = 5) {
         element.innerHTML = '';
         let i = 0;
 
