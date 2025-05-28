@@ -138,7 +138,7 @@ app.post('/api/login', async (req, res) => {
   }
 });
 
-app.post('/api/chat', async (req, res) => {
+app.post('/api/chat', authenticateToken, async (req, res) => {
     try {
         const { message, conversationId, settings } = req.body;
         let conversation = null;
@@ -244,22 +244,21 @@ Sempre use linguagem acolhedora, acessível e motivadora. Corrija erros com sens
 app.get('/api/history', authenticateToken, async (req, res) => {
     try {
         const allConversations = await db.getChatHistory(req.user.id);
-        
         const now = new Date();
         const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
         const yesterday = new Date(today.getTime() - 24 * 60 * 60 * 1000);
         const weekAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
-        
+
         const history = {
             today: [],
             yesterday: [],
             week: [],
             older: []
         };
-        
+
         allConversations.forEach(conv => {
             const updatedAt = new Date(conv.updated_at);
-            
+
             if (updatedAt >= today) {
                 history.today.push(conv);
             } else if (updatedAt >= yesterday) {
@@ -270,8 +269,7 @@ app.get('/api/history', authenticateToken, async (req, res) => {
                 history.older.push(conv);
             }
         });
-        
-        console.log('Histórico enviado ao frontend');
+
         res.json(history);
     } catch (error) {
         console.error('Erro ao buscar histórico:', error);
@@ -279,19 +277,18 @@ app.get('/api/history', authenticateToken, async (req, res) => {
     }
 });
 
-app.get('/api/conversation/:id', async (req, res) => {
+app.get('/api/conversation/:id', authenticateToken, async (req, res) => {
     try {
         const { id } = req.params;
         const messages = await db.getConversationMessages(id);
-        console.log(`Conversa ${id} carregada`);
-        res.json({ messages, conversationId: id });
+        res.json({ messages });
     } catch (error) {
-        console.error('Erro ao carregar conversa:', error);
-        res.status(500).json({ error: 'Erro ao carregar conversa' });
+        console.error('Erro ao buscar mensagens:', error);
+        res.status(500).json({ error: 'Erro ao buscar mensagens' });
     }
 });
 
-app.post('/api/new-conversation', async (req, res) => {
+app.post('/api/new-conversation', authenticateToken, async (req, res) => { 
     try {
         const conversation = await db.createNewConversation('Nova Conversa');
         console.log('Nova conversa criada via API:', conversation.id);
@@ -302,14 +299,13 @@ app.post('/api/new-conversation', async (req, res) => {
     }
 });
 
-app.delete('/api/conversation/:id', async (req, res) => {
+app.delete('/api/conversation/:id', authenticateToken, async (req, res) => {
     try {
         const { id } = req.params;
         await db.deleteConversation(id);
-        console.log(`✅ Conversa ${id} deletada`);
-        res.json({ success: true });
+        res.json({ message: 'Conversa deletada' });
     } catch (error) {
-        console.error('❌ Erro ao deletar conversa:', error);
+        console.error('Erro ao deletar conversa:', error);
         res.status(500).json({ error: 'Erro ao deletar conversa' });
     }
 });
