@@ -145,6 +145,29 @@ document.addEventListener('DOMContentLoaded', () => {
             document.body.style.overflow = '';
         }
     }
+
+    document.getElementById('login-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const email = document.getElementById('email').value;
+  const password = document.getElementById('password').value;
+
+  const res = await fetch('/api/login', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, password })
+  });
+
+  const data = await res.json();
+  if (res.ok) {
+    localStorage.setItem('token', data.token);
+    alert('Login realizado');
+    // Redireciona para a interface principal
+    window.location.href = '/app.html';
+  } else {
+    alert(data.error);
+  }
+});
+
     
     function switchSettingsTab(tabName) {
         settingsTabs.forEach(tab => {
