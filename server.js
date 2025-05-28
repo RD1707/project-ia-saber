@@ -28,26 +28,6 @@ function authenticateToken(req, res, next) {
     });
 }
 
-// Proteja as rotas (exemplo para /api/history)
-app.get('/api/history', authenticateToken, async (req, res) => {
-    try {
-        // Sua lógica existente...
-    } catch (error) {
-        // Tratamento de erro
-    }
-});
-
-// Proteja TODAS as rotas que requerem autenticação:
-app.get('/api/history', authenticateToken, ...);
-app.get('/api/conversation/:id', authenticateToken, ...);
-app.post('/api/chat', authenticateToken, ...);
-app.post('/api/new-conversation', authenticateToken, ...);
-app.delete('/api/conversation/:id', authenticateToken, ...);
-app.put('/api/conversation/:id/title', authenticateToken, ...);
-app.get('/api/stats', authenticateToken, ...);
-app.get('/api/export', authenticateToken, ...);
-app.delete('/api/clear-all', authenticateToken, ...);
-
 const cohere = new CohereClient({
   token: process.env.COHERE_API_KEY,
 });
