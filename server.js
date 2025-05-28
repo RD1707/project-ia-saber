@@ -4,6 +4,7 @@ const path = require('path');
 require('dotenv').config();
 const { CohereClient } = require('cohere-ai');
 const db = require('./db');
+const jwt = require('jsonwebtoken');
 
 const app = express();
 const PORT = 3000;
@@ -39,12 +40,7 @@ Analise a seguinte mensagem de um aluno e crie um título curto e descritivo (m�
 
 Mensagem: "${firstMessage}"
 
-Crie um título objetivo e educacional. Exemplos:
-- "Matemática - Equações"
-- "História do Brasil"
-- "Redação - Argumentação"
-- "Química - Tabela Periódica"
-- "Inglês - Present Perfect"
+Crie um título objetivo.
 
 Responda APENAS com o título, sem aspas ou explicações:`;
 
@@ -96,6 +92,34 @@ app.use(express.static(path.join(__dirname, 'static')));
 
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'static', 'index.html'));
+});
+
+app.post('/api/register', async (req, res) => {
+  const { name, email, password } = req.body;
+  try {
+    const user = await db.registerUser(name, email, password);
+    res.status(201).json({ message: 'Usuário registrado com sucesso', user });
+  } catch (err) {
+    console.error('Erro no registro:', err);
+    res.status(500).json({ error: 'Erro ao registrar usuário' });
+  }
+});
+
+app.post('/api/login', async (req, res) => {
+  const { email, password } = req.body;
+  try {
+    const user = await db.loginUser(email, password);
+    if (!user) return res.status(401).json({ error: 'Credenciais inválidas' });
+
+    const token = jwt.sign({ id: user.id, email: user.email }, process.env.JWT_SECRET, {
+      expiresIn: '2h'
+    });
+
+    res.json({ message: 'Login bem-sucedido', token, user });
+  } catch (err) {
+    console.error('Erro no login:', err);
+    res.status(500).json({ error: 'Erro ao fazer login' });
+  }
 });
 
 app.post('/api/chat', async (req, res) => {

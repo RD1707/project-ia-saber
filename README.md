@@ -138,7 +138,7 @@ Pull Requests são bem-vindos! Caso deseje contribuir:
 
 ---
 
-## 👨‍💻 Equipe de Desenvolvimento
+## Equipe de Desenvolvimento
 
 - **Ramon Pires**: Programador Principal e Líder do Projeto  
 - **Kenai Almeida**: Desenvolvedor Frontend e Designer 
