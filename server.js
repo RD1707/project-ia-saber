@@ -14,6 +14,40 @@ db.initializeDatabase().catch(console.error);
 app.use(cors());
 app.use(express.json());
 
+// Adicione após a definição do app
+function authenticateToken(req, res, next) {
+    const authHeader = req.headers['authorization'];
+    const token = authHeader && authHeader.split(' ')[1];
+    
+    if (!token) return res.status(401).json({ error: 'Acesso não autorizado' });
+    
+    jwt.verify(token, process.env.JWT_SECRET, (err, user) => {
+        if (err) return res.status(403).json({ error: 'Token inválido' });
+        req.user = user;
+        next();
+    });
+}
+
+// Proteja as rotas (exemplo para /api/history)
+app.get('/api/history', authenticateToken, async (req, res) => {
+    try {
+        // Sua lógica existente...
+    } catch (error) {
+        // Tratamento de erro
+    }
+});
+
+// Proteja TODAS as rotas que requerem autenticação:
+app.get('/api/history', authenticateToken, ...);
+app.get('/api/conversation/:id', authenticateToken, ...);
+app.post('/api/chat', authenticateToken, ...);
+app.post('/api/new-conversation', authenticateToken, ...);
+app.delete('/api/conversation/:id', authenticateToken, ...);
+app.put('/api/conversation/:id/title', authenticateToken, ...);
+app.get('/api/stats', authenticateToken, ...);
+app.get('/api/export', authenticateToken, ...);
+app.delete('/api/clear-all', authenticateToken, ...);
+
 const cohere = new CohereClient({
   token: process.env.COHERE_API_KEY,
 });
