@@ -27,7 +27,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const data = await res.json();
         if (res.ok) {
             localStorage.setItem('token', data.token);
-            window.location.href = '/chat.html';
+            window.location.href = '/index.html';
         } else {
             alert(data.error || 'Erro ao fazer login');
         }

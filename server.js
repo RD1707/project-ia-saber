@@ -107,8 +107,12 @@ function filterContextHistory(messages, contextMemory) {
 app.use(express.static(path.join(__dirname, 'static')));
 
 app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'static', 'index.html'));
-});
+    res.sendFile(path.join(__dirname, 'static', 'login.html'));
+  });
+  
+  app.get('/chat', authenticateToken, (req, res) => {
+    res.sendFile(path.join(__dirname, 'static', 'index.html'));
+  });
 
 app.post('/api/register', async (req, res) => {
   const { name, email, password } = req.body;
@@ -300,15 +304,6 @@ app.post('/api/new-conversation', authenticateToken, async (req, res) => {
 });
 
 app.use(express.static(path.join(__dirname, 'static')));
-
-// Corrigir rotas:
-app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, 'static', 'login.html'));
-  });
-  
-  app.get('/chat', authenticateToken, (req, res) => {
-    res.sendFile(path.join(__dirname, 'static', 'index.html'));
-  });
 
 app.delete('/api/conversation/:id', authenticateToken, async (req, res) => {
     try {
