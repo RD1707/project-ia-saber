@@ -1140,6 +1140,7 @@ document.addEventListener('DOMContentLoaded', () => {
         welcomeScreen.style.display = 'none';
         appContainer.style.display = 'none';
     });
+     initializeApp(); 
 });
 
     function formatTime(timestamp) {
@@ -1172,4 +1173,4 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-  initializeApp(); 
+ 
