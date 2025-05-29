@@ -1,79 +1,108 @@
 document.addEventListener('DOMContentLoaded', () => {
     console.log('🚀 SABER Chat inicializando...');
     
+    // Elementos da interface
+    const loginScreen = document.getElementById('loginScreen');
+    const loginForm = document.getElementById('login-form');
+    const registerForm = document.getElementById('register-form');
+    const loginTabs = document.querySelectorAll('.login-tab');
     const welcomeScreen = document.getElementById('welcomeScreen');
     const welcomeForm = document.getElementById('welcome-form');
-    const welcomeInput = document.getElementById('welcome-input');
     const appContainer = document.getElementById('appContainer');
     
-    const messageForm = document.getElementById('message-form');
-    const messageInput = document.getElementById('message-input');
-    const sendButton = document.getElementById('send-button');
-    const chatMessages = document.getElementById('chat-messages');
-    const thinkingIndicator = document.getElementById('thinking');
-    
-    const sidebar = document.getElementById('sidebar');
-    const sidebarOverlay = document.getElementById('sidebarOverlay');
-    const newChatBtn = document.getElementById('newChatBtn');
-    const mobileMenuBtn = document.getElementById('mobileMenuBtn');
-    const headerMenuBtn = document.getElementById('headerMenuBtn');
-    const sidebarToggle = document.getElementById('sidebarToggle');
-    
-    const settingsModalOverlay = document.getElementById('settingsModalOverlay');
-    const settingsModal = document.getElementById('settingsModal');
-    const settingsCloseBtn = document.getElementById('settingsCloseBtn');
-    const settingsTabs = document.querySelectorAll('.settings-tab');
-    const settingsPanels = document.querySelectorAll('.settings-panel');
-    
-    let currentConversationId = null;
-    let abortController = null;
-    let chatHistory = [];
-    let currentUser = null;
-    let userSettings = {
-        ai: {
-            temperature: 0.5,
-            maxTokens: 300,
-            personality: 'balanced',
-            contextMemory: 10
-        },
-        interface: {
-            theme: 'light',
-            fontSize: 'medium',
-            typingEffect: true,
-            soundNotifications: false,
-            compactMode: false
-        },
-        chat: {
-            autoSave: true,
-            confirmDelete: true,
-            enterToSend: true,
-            showTimestamps: false
-        }
-    };
-    
-    initializeApp();
-
-    document.getElementById('logoutBtn').addEventListener('click', () => {
-        localStorage.removeItem('token');
-        window.location.href = '/';
+    // Configurar abas de login/registro
+    loginTabs.forEach(tab => {
+        tab.addEventListener('click', () => {
+            document.querySelector('.login-tab.active').classList.remove('active');
+            document.querySelector('.login-form.active').classList.remove('active');
+            
+            tab.classList.add('active');
+            document.getElementById(`${tab.dataset.tab}-form`).classList.add('active');
+        });
     });
-});
 
-function showLoader() {
-    document.getElementById('loader').style.display = 'block';
-  }
-  
-  function hideLoader() {
-    document.getElementById('loader').style.display = 'none';
-  }
+    // Função para mostrar tela de chat após login
+    const showChatInterface = (user) => {
+        loginScreen.style.display = 'none';
+        welcomeScreen.style.display = 'flex';
+        document.querySelector('.user-name').textContent = user.name;
+        document.querySelector('.user-plan').textContent = 'Versão Gratuita';
+    };
 
-    document.addEventListener('DOMContentLoaded', () => {
-        // Verificar se o usuário está autenticado
-        const token = localStorage.getItem('token');
-        if (!token) {
-            window.location.href = '/';
+    // Login
+    loginForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const email = document.getElementById('email').value;
+        const password = document.getElementById('password').value;
+        
+        try {
+            const res = await fetch('/api/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email, password })
+            });
+            
+            const data = await res.json();
+            
+            if (res.ok) {
+                localStorage.setItem('token', data.token);
+                showChatInterface(data.user);
+            } else {
+                alert(data.error || 'Erro ao fazer login');
+            }
+        } catch (error) {
+            alert('Erro de conexão com o servidor');
+        }
+    });
+
+    // Registro
+    registerForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const name = document.getElementById('reg-name').value;
+        const email = document.getElementById('reg-email').value;
+        const password = document.getElementById('reg-password').value;
+        const confirm = document.getElementById('reg-confirm').value;
+        
+        if (password !== confirm) {
+            alert('As senhas não coincidem');
             return;
         }
+        
+        try {
+            const res = await fetch('/api/register', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name, email, password })
+            });
+            
+            const data = await res.json();
+            if (res.status === 201) {
+                alert('Conta criada com sucesso! Faça login');
+                document.querySelector('[data-tab="login"]').click();
+            } else {
+                alert(data.error || 'Erro ao registrar');
+            }
+        } catch (error) {
+            alert('Erro de conexão com o servidor');
+        }
+    });
+
+    // Verificar se usuário já está logado
+    const token = localStorage.getItem('token');
+    if (token) {
+        fetch('/api/verify-token', {
+            headers: { 'Authorization': `Bearer ${token}` }
+        })
+        .then(res => {
+            if (res.ok) return res.json();
+            throw new Error('Token inválido');
+        })
+        .then(user => showChatInterface(user))
+        .catch(() => {
+            localStorage.removeItem('token');
+            loginScreen.style.display = 'flex';
+        });
+    }
 
     async function initializeApp() {
   const token = localStorage.getItem('token');
@@ -119,72 +148,6 @@ function showLoader() {
         carregarHistorico();
         updateAboutStats();
     }
-    
-    
-    function setupAuth() {
-    const loginForm = document.getElementById('login-form');
-    const registerForm = document.getElementById('register-form');
-    const loginTabs = document.querySelectorAll('.login-tab');
-
-    loginTabs.forEach(tab => {
-        tab.addEventListener('click', () => {
-            document.querySelector('.login-tab.active').classList.remove('active');
-            document.querySelector('.login-form.active').classList.remove('active');
-            
-            tab.classList.add('active');
-            document.getElementById(`${tab.dataset.tab}-form`).classList.add('active');
-        });
-    });
-
-    loginForm.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const email = document.getElementById('email').value;
-        const password = document.getElementById('password').value;
-        
-        const res = await fetch('/api/login', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email, password })
-        });
-        
-        const data = await res.json();
-        if (res.ok) {
-            localStorage.setItem('token', data.token);
-            currentUser = data.user;
-            document.getElementById('loginScreen').style.display = 'none';
-            welcomeScreen.style.display = 'flex';
-        } else {
-            alert(data.error || 'Erro ao fazer login');
-        }
-    });
-
-    registerForm.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const name = document.getElementById('reg-name').value;
-        const email = document.getElementById('reg-email').value;
-        const password = document.getElementById('reg-password').value;
-        const confirm = document.getElementById('reg-confirm').value;
-        
-        if (password !== confirm) {
-            alert('As senhas não coincidem');
-            return;
-        }
-        
-        const res = await fetch('/api/register', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ name, email, password })
-        });
-        
-        const data = await res.json();
-        if (res.status === 201) {
-            alert('Conta criada com sucesso! Faça login');
-            document.querySelector('[data-tab="login"]').click();
-        } else {
-            alert(data.error || 'Erro ao registrar');
-        }
-    });
-}
     
     function setupEventListeners() {
         if (welcomeForm) {
@@ -269,30 +232,6 @@ function showLoader() {
             document.body.style.overflow = '';
         }
     }
-
-    document.getElementById('login-form').addEventListener('submit', async (e) => {
-  e.preventDefault();
-  const email = document.getElementById('email').value;
-  const password = document.getElementById('password').value;
-
-  const res = await fetch('/api/login', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email, password })
-  });
-
-  const data = await res.json();
-  if (res.ok) {
-    localStorage.setItem('token', data.token);
-    currentUser = data.user;
-    document.getElementById('loginScreen').style.display = 'none';
-    document.getElementById('welcomeScreen').style.display = 'flex';
-    document.getElementById('appContainer').style.display = 'flex';
-} else {
-    alert(data.error);
-  }
-});
-
     
     function switchSettingsTab(tabName) {
         settingsTabs.forEach(tab => {
@@ -1195,6 +1134,14 @@ function showLoader() {
         return div.innerHTML;
     }
 
+        document.getElementById('logoutBtn').addEventListener('click', () => {
+        localStorage.removeItem('token');
+        loginScreen.style.display = 'flex';
+        welcomeScreen.style.display = 'none';
+        appContainer.style.display = 'none';
+    });
+});
+
     function formatTime(timestamp) {
         try {
             const date = new Date(timestamp);
@@ -1224,4 +1171,5 @@ function showLoader() {
             }
         });
     }
-    });
+
+  initializeApp(); 

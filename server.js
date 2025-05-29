@@ -108,20 +108,10 @@ function filterContextHistory(messages, contextMemory) {
 
 app.use(express.static(path.join(__dirname, 'static')));
 
-// Rota para login
-app.get('/login', (req, res) => {
-    res.sendFile(path.join(__dirname, 'static', 'login.html'));
-  });
-  
-  // Rota raiz redireciona para login
-  app.get('/', (req, res) => {
-    res.redirect('/login');
-  });
-  
   // Rota do chat (requer autenticação)
-  app.get('/chat', authenticateToken, (req, res) => {
+app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'static', 'index.html'));
-  });
+});
 
 app.post('/api/register', async (req, res) => {
   const { name, email, password } = req.body;
