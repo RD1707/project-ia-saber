@@ -13,25 +13,35 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-    loginForm.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const email = document.getElementById('email').value;
-        const password = document.getElementById('password').value;
-        
-        const res = await fetch('/api/login', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email, password })
-        });
-        
-        const data = await res.json();
-        if (res.ok) {
-            localStorage.setItem('token', data.token);
-            window.location.href = '/index.html';
-        } else {
-            alert(data.error || 'Erro ao fazer login');
-        }
+    // Adicionar redirecionamento após login:
+loginForm.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  showLoader();
+  
+  const email = document.getElementById('email').value;
+  const password = document.getElementById('password').value;
+  
+  try {
+    const res = await fetch('/api/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password })
     });
+    
+    const data = await res.json();
+    
+    if (res.ok) {
+      localStorage.setItem('token', data.token);
+      window.location.href = '/index.html'; // Redirecionar para o chat
+    } else {
+      alert(data.error || 'Erro ao fazer login');
+    }
+  } catch (error) {
+    alert('Erro de conexão com o servidor');
+  } finally {
+    hideLoader();
+  }
+});
 
     function showLoader() {
         document.getElementById('loader').style.display = 'block';

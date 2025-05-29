@@ -16,18 +16,20 @@ db.initializeDatabase().catch(console.error);
 app.use(cors());
 app.use(express.json());
 
-// Adicione após a definição do app
 function authenticateToken(req, res, next) {
-    const authHeader = req.headers['authorization'];
-    const token = authHeader && authHeader.split(' ')[1];
-    
-    if (!token) return res.status(401).json({ error: 'Acesso não autorizado' });
-    
-    jwt.verify(token, process.env.JWT_SECRET, (err, user) => {
-        if (err) return res.status(403).json({ error: 'Token inválido' });
-        req.user = user;
-        next();
-    });
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1];
+  
+  if (!token) return res.status(401).json({ error: 'Acesso não autorizado' });
+  
+  jwt.verify(token, process.env.JWT_SECRET, (err, user) => {
+    if (err) {
+      console.error('Erro na verificação do token:', err);
+      return res.status(403).json({ error: 'Token inválido ou expirado' });
+    }
+    req.user = user;
+    next();
+  });
 }
 
 const cohere = new CohereClient({
@@ -134,18 +136,30 @@ app.post('/api/register', async (req, res) => {
 
 app.post('/api/login', async (req, res) => {
   const { email, password } = req.body;
+  
   try {
     const user = await db.loginUser(email, password);
-    if (!user) return res.status(401).json({ error: 'Credenciais inválidas' });
+    if (!user) {
+      console.log('Credenciais inválidas para:', email);
+      return res.status(401).json({ error: 'Credenciais inválidas' });
+    }
 
-    const token = jwt.sign({ id: user.id, email: user.email }, process.env.JWT_SECRET, {
-      expiresIn: '2h'
+    const token = jwt.sign(
+      { id: user.id, email: user.email },
+      process.env.JWT_SECRET,
+      { expiresIn: '2h' }
+    );
+
+    console.log('Login bem-sucedido para:', email);
+    res.json({ 
+      message: 'Login bem-sucedido', 
+      token, 
+      user: { id: user.id, name: user.name, email: user.email } 
     });
-
-    res.json({ message: 'Login bem-sucedido', token, user });
+    
   } catch (err) {
     console.error('Erro no login:', err);
-    res.status(500).json({ error: 'Erro ao fazer login' });
+    res.status(500).json({ error: 'Erro no servidor' });
   }
 });
 
@@ -364,6 +378,15 @@ app.get('/api/stats', async (req, res) => {
         console.error('Erro ao buscar estatísticas:', error);
         res.status(500).json({ error: 'Erro ao buscar estatísticas' });
     }
+});
+
+// Rota para verificação de token
+app.get('/api/verify-token', authenticateToken, (req, res) => {
+  res.json({
+    id: req.user.id,
+    email: req.user.email,
+    name: req.user.name || 'Usuário'
+  });
 });
 
 app.get('/api/export', async (req, res) => {

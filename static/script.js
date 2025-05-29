@@ -75,28 +75,41 @@ function showLoader() {
             return;
         }
 
-    function initializeApp() {
-        const token = localStorage.getItem('token');
-        if (!token) {
-            document.getElementById('loginScreen').style.display = 'flex';
-            document.getElementById('welcomeScreen').style.display = 'none';
-            document.getElementById('appContainer').style.display = 'none';
-            return;
-        }
+    async function initializeApp() {
+  const token = localStorage.getItem('token');
+  
+  if (!token) {
+    document.getElementById('loginScreen').style.display = 'flex';
+    document.getElementById('welcomeScreen').style.display = 'none';
+    document.getElementById('appContainer').style.display = 'none';
+    return;
+  }
+
+  try {
+    // Verificar token com o servidor
+    const res = await fetch('/api/verify-token', {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
     
-        try {
-            const payload = JSON.parse(atob(token.split('.')[1]));
-            currentUser = { id: payload.id, email: payload.email };
-            document.getElementById('loginScreen').style.display = 'none';
-            document.getElementById('welcomeScreen').style.display = 'flex';
-        } catch (err) {
-            console.error('Token inválido ou expirado');
-            localStorage.removeItem('token');
-            document.getElementById('loginScreen').style.display = 'flex';
-            document.getElementById('welcomeScreen').style.display = 'none';
-            document.getElementById('appContainer').style.display = 'none';
-            return;
-        }
+    if (!res.ok) throw new Error('Token inválido');
+    
+    const userData = await res.json();
+    currentUser = userData;
+    
+    document.getElementById('loginScreen').style.display = 'none';
+    document.getElementById('welcomeScreen').style.display = 'flex';
+    
+    // Atualizar UI com dados do usuário
+    document.querySelector('.user-name').textContent = currentUser.name;
+    document.querySelector('.user-plan').textContent = 'Versão Gratuita';
+    
+  } catch (err) {
+    console.error('Falha na autenticação:', err);
+    localStorage.removeItem('token');
+    document.getElementById('loginScreen').style.display = 'flex';
+    document.getElementById('welcomeScreen').style.display = 'none';
+    document.getElementById('appContainer').style.display = 'none';
+  }
     
         setupEventListeners();
         setupSidebar();
