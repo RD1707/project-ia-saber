@@ -16,7 +16,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const chatMessages = document.getElementById('chat-messages');
     const thinkingIndicator = document.getElementById('thinking');
 
-    // Inicialize estas variáveis
+        // Inicialize estas variáveis
         let currentConversationId = null;
         let chatHistory = {
             today: [],
@@ -25,6 +25,29 @@ document.addEventListener('DOMContentLoaded', () => {
             older: []
         };
         let currentUser = null;
+
+        let userSettings = {
+        ai: {
+        temperature: 0.5,
+        maxTokens: 300,
+        personality: 'balanced',
+        contextMemory: 10
+        },
+        interface: {
+        theme: 'light',
+        fontSize: 'medium',
+        typingEffect: true,
+        soundNotifications: false,
+        compactMode: false
+        },
+        chat: {
+        autoSave: true,
+        confirmDelete: true,
+        enterToSend: true,
+        showTimestamps: false
+        }
+        };
+
     
     // Configurar abas de login/registro
     loginTabs.forEach(tab => {
@@ -107,7 +130,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const token = localStorage.getItem('token');
     if (token) {
         fetch('/api/verify-token', {
-            headers: { 'Authorization': `Bearer ${token}` }
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+        }
+
         })
         .then(res => {
             if (res.ok) return res.json();
@@ -181,10 +208,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (newChatBtn) {
             newChatBtn.addEventListener('click', criarNovaConversa);
         }
-        
-        if (mobileMenuBtn) {
-            mobileMenuBtn.addEventListener('click', toggleSidebar);
-        }
+    
         if (headerMenuBtn) {
             headerMenuBtn.addEventListener('click', toggleSidebar);
         }
@@ -1148,8 +1172,6 @@ document.addEventListener('DOMContentLoaded', () => {
         welcomeScreen.style.display = 'none';
         appContainer.style.display = 'none';
     });
-     initializeApp(); 
-});
 
     function formatTime(timestamp) {
         try {
@@ -1180,5 +1202,10 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     }
+
+     initializeApp(); 
+});
+
+    
 
  
