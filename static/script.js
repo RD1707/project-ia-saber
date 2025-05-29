@@ -9,6 +9,22 @@ document.addEventListener('DOMContentLoaded', () => {
     const welcomeScreen = document.getElementById('welcomeScreen');
     const welcomeForm = document.getElementById('welcome-form');
     const appContainer = document.getElementById('appContainer');
+    const welcomeInput = document.getElementById('welcome-input');
+    const messageForm = document.getElementById('message-form');
+    const messageInput = document.getElementById('message-input');
+    const sendButton = document.getElementById('send-button');
+    const chatMessages = document.getElementById('chat-messages');
+    const thinkingIndicator = document.getElementById('thinking');
+
+    // Inicialize estas variáveis
+        let currentConversationId = null;
+        let chatHistory = {
+            today: [],
+            yesterday: [],
+            week: [],
+            older: []
+        };
+        let currentUser = null;
     
     // Configurar abas de login/registro
     loginTabs.forEach(tab => {
@@ -683,90 +699,82 @@ document.addEventListener('DOMContentLoaded', () => {
     
     async function handleWelcomeSubmit(e) {
         e.preventDefault();
+    
+    const firstMessage = welcomeInput.value.trim();
+    if (!firstMessage) return;
+    
+    console.log('💭 Primeira mensagem:', firstMessage);
+    
+    welcomeScreen.classList.add('fade-out');
+    
+    setTimeout(async () => {
+        welcomeScreen.style.display = 'none';
+        appContainer.style.display = 'flex';
         
-        const firstMessage = welcomeInput.value.trim();
-        if (!firstMessage) return;
-        
-        console.log('💭 Primeira mensagem:', firstMessage);
-        
-        welcomeScreen.classList.add('fade-out');
-        
-        setTimeout(async () => {
-            welcomeScreen.style.display = 'none';
-            appContainer.style.display = 'flex';
-            
-            await sendMessage(firstMessage);
-        }, 500);
+        // Cria uma nova conversa antes de enviar a mensagem
+        await criarNovaConversa();
+        await sendMessage(firstMessage);
+    }, 500);
     }
     
     async function sendMessage(message) {
-        if (!message.trim()) return;
-        
-        console.log('📤 Enviando mensagem:', message.substring(0, 50) + '...');
-        
-        addMessageToChat('user', message);
-        
-        if (messageInput && messageInput.value === message) {
-            messageInput.value = '';
-            messageInput.style.height = 'auto';
-        }
-        
-        showThinking();
-        
-        abortController = new AbortController();
-        
-        try {
-            const response = await fetch('/api/chat', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ 
-                    message: message,
-                    conversationId: currentConversationId,
-                    settings: userSettings.ai
-                }),
-                signal: abortController.signal
-            });
-            
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-            
-            const data = await response.json();
-            
-            hideThinking();
-            
-            const useTypingEffect = userSettings.interface.typingEffect;
-            addMessageToChat('ai', data.response, useTypingEffect);
-            
-            if (userSettings.interface.soundNotifications) {
-                playNotificationSound();
-            }
-            
-            currentConversationId = data.conversationId;
-            
-            if (data.isFirstMessage) {
-                console.log('🆕 Primeira mensagem - recarregando histórico');
-                await carregarHistorico();
-            }
-            
-        } catch (error) {
-            console.error('Erro ao processar mensagem:', error);
-            hideThinking();
-            
-            if (error.name === 'AbortError') {
-                addMessageToChat('ai', 'Resposta cancelada pelo usuário.');
-            } else {
-                addMessageToChat('ai', 'Desculpe, ocorreu um erro ao processar sua mensagem. Por favor, tente novamente.');
-            }
-        } finally {
-            sendButton.disabled = false;
-            abortController = null;
-        }
-        
-        scrollToBottom();
+    if (!message.trim()) return;
+    
+    console.log('📤 Enviando mensagem:', message.substring(0, 50) + '...');
+    
+    addMessageToChat('user', message);
+    
+    if (messageInput && messageInput.value === message) {
+        messageInput.value = '';
+        messageInput.style.height = 'auto';
     }
+    
+    showThinking();
+    
+    try {
+        const token = localStorage.getItem('token');
+        const response = await fetch('/api/chat', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({ 
+                message: message,
+                conversationId: currentConversationId,
+                settings: userSettings.ai
+            })
+        });
+        
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        hideThinking();
+        
+        const useTypingEffect = userSettings.interface.typingEffect;
+        addMessageToChat('ai', data.response, useTypingEffect);
+        
+        if (userSettings.interface.soundNotifications) {
+            playNotificationSound();
+        }
+        
+        currentConversationId = data.conversationId;
+        
+        if (data.isFirstMessage) {
+            console.log('🆕 Primeira mensagem - recarregando histórico');
+            await carregarHistorico();
+        }
+        
+    } catch (error) {
+        console.error('Erro ao processar mensagem:', error);
+        hideThinking();
+        addMessageToChat('ai', 'Desculpe, ocorreu um erro ao processar sua mensagem. Por favor, tente novamente.');
+    }
+    
+    scrollToBottom();
+}
     
     async function handleSubmit(e) {
         e.preventDefault();
