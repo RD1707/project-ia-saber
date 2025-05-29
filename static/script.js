@@ -742,6 +742,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     
     async function sendMessage(message) {
+
+        
     if (!message.trim()) return;
     
     console.log('📤 Enviando mensagem:', message.substring(0, 50) + '...');
@@ -823,7 +825,8 @@ document.addEventListener('DOMContentLoaded', () => {
             const response = await fetch('/api/new-conversation', {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json'
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
                 }
             });
             

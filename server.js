@@ -135,10 +135,10 @@ app.post('/api/login', async (req, res) => {
     }
 
     const token = jwt.sign(
-      { id: user.id, email: user.email },
-      process.env.JWT_SECRET,
-      { expiresIn: '2h' }
-    );
+  { id: user.id, email: user.email, name: user.name }, // Adiciona o name no token
+  process.env.JWT_SECRET,
+  { expiresIn: '2h' }
+);
 
     console.log('Login bem-sucedido para:', email);
     res.json({ 
