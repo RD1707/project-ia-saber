@@ -17,17 +17,19 @@ async function initializeDatabase() {
         email TEXT UNIQUE NOT NULL,
         password_hash TEXT NOT NULL,
         created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
-      );
+      );`); //
 
+    await pool.query(`
       CREATE TABLE IF NOT EXISTS conversations (
         id UUID PRIMARY KEY,
         title TEXT NOT NULL,
         created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
         message_count INTEGER DEFAULT 0,
-        user_id UUID REFERENCES users(id) ON DELETE CASCADE
-      );
+        user_id UUID REFERENCES users(id) ON DELETE CASCADE 
+      );`); //
 
+    await pool.query(`
       CREATE TABLE IF NOT EXISTS messages (
         id SERIAL PRIMARY KEY,
         conversation_id UUID REFERENCES conversations(id) ON DELETE CASCADE,
@@ -35,201 +37,264 @@ async function initializeDatabase() {
         content TEXT NOT NULL,
         timestamp TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
         ai_settings JSONB
-      );
+      );`); //
       
-      CREATE INDEX IF NOT EXISTS idx_messages_conversation_id ON messages(conversation_id);
-      CREATE INDEX IF NOT EXISTS idx_conversations_updated_at ON conversations(updated_at DESC);
-    `);
-    console.log('Banco PostgreSQL pronto');
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_messages_conversation_id ON messages(conversation_id);`); //
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_conversations_user_id ON conversations(user_id);`); // Adicionado índice para user_id
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_conversations_updated_at ON conversations(updated_at DESC);`); //
+    
+    console.log('Banco PostgreSQL pronto e schema verificado/atualizado.');
   } catch (error) {
-    console.error('Erro ao inicializar banco:', error);
+    console.error('Erro ao inicializar banco de dados:', error.message);
     throw error;
   }
 }
 
 async function registerUser(name, email, password) {
-  const id = uuidv4();
-  const password_hash = await bcrypt.hash(password, 10);
-  await pool.query(`
-    INSERT INTO users (id, name, email, password_hash)
-    VALUES ($1, $2, $3, $4)
-  `, [id, name, email, password_hash]);
-  return { id, name, email };
+  const id = uuidv4(); //
+  const saltRounds = 10; // Fator de custo para o hash
+  const password_hash = await bcrypt.hash(password, saltRounds); //
+  try {
+    const result = await pool.query(
+      `INSERT INTO users (id, name, email, password_hash)
+       VALUES ($1, $2, $3, $4)
+       RETURNING id, name, email`, // Retorna os dados inseridos
+      [id, name, email, password_hash]
+    );
+    return result.rows[0];
+  } catch (error) {
+    console.error('Erro ao registrar usuário em db.js:', error.message);
+    throw error; // Propaga o erro para ser tratado pela rota
+  }
 }
 
 async function loginUser(email, password) {
-  const res = await pool.query(`SELECT * FROM users WHERE email = $1`, [email]);
-  const user = res.rows[0];
-  if (!user) return null;
+  try {
+    const res = await pool.query(`SELECT id, name, email, password_hash FROM users WHERE email = $1`, [email]); //
+    const user = res.rows[0];
+    if (!user) return null; //
 
-  const valid = await bcrypt.compare(password, user.password_hash);
-  if (!valid) return null;
+    const validPassword = await bcrypt.compare(password, user.password_hash); //
+    if (!validPassword) return null; //
 
-  return { id: user.id, name: user.name, email: user.email };
+    return { id: user.id, name: user.name, email: user.email }; //
+  } catch (error) {
+    console.error('Erro ao logar usuário em db.js:', error.message);
+    throw error;
+  }
 }
 
 async function createNewConversation(userId, title = 'Nova Conversa') {
   try {
-    const id = uuidv4();
-    const now = new Date().toISOString();
+    const id = uuidv4(); //
+    const now = new Date().toISOString(); //
 
-    await pool.query(`
-      INSERT INTO conversations (id, user_id, title, created_at, updated_at, message_count) 
-      VALUES ($1, $2, $3, $4, $5, 0)`, 
+    const result = await pool.query(
+      `INSERT INTO conversations (id, user_id, title, created_at, updated_at, message_count) 
+       VALUES ($1, $2, $3, $4, $5, 0)
+       RETURNING id, title, created_at, updated_at, message_count`, //
       [id, userId, title, now, now]
     );
-
-    return { 
-      id, 
-      title, 
-      created_at: now, 
-      updated_at: now, 
-      message_count: 0 
-    };
+    return result.rows[0];
   } catch (error) {
-    console.error('Erro ao criar conversa:', error);
+    console.error('Erro ao criar nova conversa em db.js:', error.message);
     throw error;
   }
 }
 
 async function saveMessage(conversationId, role, content, aiSettings = null) {
   try {
-    const now = new Date().toISOString();
+    const now = new Date().toISOString(); //
     
-    await pool.query(`
-      INSERT INTO messages (conversation_id, role, content, timestamp, ai_settings) 
-      VALUES ($1, $2, $3, $4, $5)`,
+    await pool.query(
+      `INSERT INTO messages (conversation_id, role, content, timestamp, ai_settings) 
+       VALUES ($1, $2, $3, $4, $5)`, //
       [conversationId, role, content, now, aiSettings ? JSON.stringify(aiSettings) : null]
     );
     
-    await pool.query(`
-      UPDATE conversations 
-      SET updated_at = $1, 
-          message_count = (SELECT COUNT(*) FROM messages WHERE conversation_id = $2) 
-      WHERE id = $2`, 
+    // Atualiza a contagem de mensagens e a data de atualização da conversa
+    await pool.query(
+      `UPDATE conversations 
+       SET updated_at = $1, 
+           message_count = (SELECT COUNT(*) FROM messages WHERE conversation_id = $2) 
+       WHERE id = $2`, //
       [now, conversationId]
     );
-    
   } catch (error) {
-    console.error('Erro ao salvar mensagem:', error);
+    console.error('Erro ao salvar mensagem em db.js:', error.message);
     throw error;
   }
 }
 
 async function getConversationMessages(userId, conversationId) {
   try {
-    const res = await pool.query(`
-      SELECT m.id, m.conversation_id, m.role, m.content, m.timestamp, m.ai_settings
-      FROM messages m
-      JOIN conversations c ON m.conversation_id = c.id
-      WHERE m.conversation_id = $1 AND c.user_id = $2  -- Adiciona verificação de user_id
-      ORDER BY m.timestamp ASC`,
+    const res = await pool.query(
+      `SELECT m.id, m.conversation_id, m.role, m.content, m.timestamp, m.ai_settings
+       FROM messages m
+       INNER JOIN conversations c ON m.conversation_id = c.id
+       WHERE m.conversation_id = $1 AND c.user_id = $2
+       ORDER BY m.timestamp ASC`, //
       [conversationId, userId]
     );
-    
     return res.rows.map(row => ({
       ...row,
-      ai_settings: typeof row.ai_settings === 'string'
-        ? JSON.parse(row.ai_settings)
-        : row.ai_settings || null
+      ai_settings: row.ai_settings // JSONB já é parseado pelo driver pg
     }));
   } catch (error) {
-    console.error('Erro ao buscar mensagens:', error);
+    console.error('Erro ao buscar mensagens da conversa em db.js:', error.message);
     throw error;
   }
 }
 
-async function updateConversationTitle(userId, conversationId, newTitle) { // Adicionar userId
+async function getConversationDetails(userId, conversationId) {
   try {
-    const now = new Date().toISOString();
+    const res = await pool.query(
+      `SELECT id, title, created_at, updated_at, message_count
+       FROM conversations
+       WHERE id = $1 AND user_id = $2`,
+      [conversationId, userId]
+    );
+    return res.rows[0] || null;
+  } catch (error) {
+    console.error('Erro ao buscar detalhes da conversa em db.js:', error.message);
+    throw error;
+  }
+}
 
-    await pool.query(`
-      UPDATE conversations
-      SET title = $1, updated_at = $2
-      WHERE id = $3 AND user_id = $4`, // Adicionar verificação de user_id
+async function updateConversationTitle(userId, conversationId, newTitle) {
+  try {
+    const now = new Date().toISOString(); //
+    const result = await pool.query(
+      `UPDATE conversations
+       SET title = $1, updated_at = $2
+       WHERE id = $3 AND user_id = $4`, //
       [newTitle, now, conversationId, userId]
     );
-
+    return result.rowCount; // Retorna o número de linhas afetadas
   } catch (error) {
-    console.error('Erro ao atualizar título:', error);
+    console.error('Erro ao atualizar título da conversa em db.js:', error.message);
     throw error;
   }
 }
 
-async function deleteConversation(conversationId) {
+async function deleteConversationIfOwned(userId, conversationId) {
   try {
-    await pool.query(`DELETE FROM conversations WHERE id = $1`, [conversationId]);
+    // A deleção em cascata cuidará das mensagens associadas
+    const result = await pool.query(
+      `DELETE FROM conversations WHERE id = $1 AND user_id = $2`,
+      [conversationId, userId]
+    );
+    return result.rowCount; // Retorna 0 se não encontrou/não pertenceu, 1 se deletou
   } catch (error) {
-    console.error('Erro ao deletar conversa:', error);
+    console.error('Erro ao deletar conversa (se proprietário) em db.js:', error.message);
     throw error;
   }
 }
 
 async function getChatHistory(userId) {
-    try {
-        const res = await pool.query(`
-            SELECT 
-                c.*,
-                (SELECT content FROM messages 
-                 WHERE conversation_id = c.id 
-                 AND role = 'user' 
-                 ORDER BY timestamp ASC LIMIT 1) AS first_message 
-            FROM conversations c
-            WHERE c.user_id = $1
-            ORDER BY c.updated_at DESC
-        `, [userId]);
-        
-        return res.rows;
-    } catch (error) {
-        console.error('Erro ao buscar histórico:', error);
-        throw error;
-    }
-}
-
-async function clearAllConversations() {
   try {
-    // Como há CASCADE, deletar conversations também deleta messages
-    await pool.query('DELETE FROM conversations');
-    console.log('Todas as conversas foram deletadas');
+    const res = await pool.query(
+      `SELECT 
+          c.id, c.title, c.created_at, c.updated_at, c.message_count,
+          (SELECT m.content FROM messages m
+           WHERE m.conversation_id = c.id
+           ORDER BY m.timestamp ASC LIMIT 1) AS first_message_content 
+       FROM conversations c
+       WHERE c.user_id = $1
+       ORDER BY c.updated_at DESC`, //
+      [userId]
+    );
+    return res.rows;
   } catch (error) {
-    console.error('Erro ao limpar conversas:', error);
+    console.error('Erro ao buscar histórico de chat em db.js:', error.message);
     throw error;
   }
 }
 
-async function closeConnection() {
+async function clearUserConversations(userId) {
   try {
-    await pool.end();
-    console.log('Conexão com banco encerrada');
+    // Deletar conversas do usuário (mensagens serão deletadas via ON DELETE CASCADE)
+    const result = await pool.query(
+      `DELETE FROM conversations WHERE user_id = $1`,
+      [userId]
+    );
+    console.log(`${result.rowCount} conversas do usuário ${userId} foram deletadas.`);
+    return result.rowCount;
   } catch (error) {
-    console.error('Erro ao fechar conexão:', error);
+    console.error(`Erro ao limpar conversas do usuário ${userId} em db.js:`, error.message);
+    throw error;
   }
 }
 
-// Função para testar conexão
+// Mantida para fins administrativos, se necessário, mas não usada pelas rotas de usuário padrão
+async function clearAllConversations() {
+  try {
+    await pool.query('DELETE FROM messages'); // Primeiro deleta as mensagens
+    await pool.query('DELETE FROM conversations'); // Depois as conversas
+    console.log('Todas as conversas e mensagens de todos os usuários foram deletadas.');
+  } catch (error) {
+    console.error('Erro ao limpar todas as conversas em db.js:', error.message);
+    throw error;
+  }
+}
+
+async function getGlobalStats() {
+  try {
+    const conversationsRes = await pool.query('SELECT COUNT(*) AS total_conversations FROM conversations');
+    const messagesRes = await pool.query('SELECT COUNT(*) AS total_messages FROM messages');
+    const usersRes = await pool.query('SELECT COUNT(*) AS total_users FROM users');
+    
+    return {
+      totalConversations: parseInt(conversationsRes.rows[0].total_conversations, 10),
+      totalMessages: parseInt(messagesRes.rows[0].total_messages, 10),
+      totalUsers: parseInt(usersRes.rows[0].total_users, 10),
+    };
+  } catch (error) {
+    console.error('Erro ao buscar estatísticas globais em db.js:', error.message);
+    throw error;
+  }
+}
+
+
+async function closeConnection() {
+  try {
+    await pool.end(); //
+    console.log('Conexão com o banco de dados PostgreSQL encerrada.');
+  } catch (error) {
+    console.error('Erro ao fechar conexão com o banco de dados:', error.message); //
+  }
+}
+
+// Função para testar conexão (não essencial para a lógica da app, mas útil para debug)
 async function testConnection() {
   try {
-    const res = await pool.query('SELECT NOW()');
-    console.log('Conexão com banco testada:', res.rows[0].now);
+    const client = await pool.connect();
+    console.log('Conectado ao PostgreSQL com sucesso!');
+    const res = await client.query('SELECT NOW()'); //
+    console.log('Hora atual do banco:', res.rows[0].now); //
+    client.release();
     return true;
   } catch (error) {
-    console.error('Erro na conexão com banco:', error);
+    console.error('Falha ao conectar/testar o banco de dados PostgreSQL:', error.message); //
     return false;
   }
 }
 
 module.exports = {
   initializeDatabase,
+  registerUser,
+  loginUser,
   createNewConversation,
   saveMessage,
   getConversationMessages,
-  updateConversationTitle,
-  deleteConversation,
+  getConversationDetails, // Nova
+  updateConversationTitle, // Modificada para retornar rowCount
+  deleteConversationIfOwned, // Nova (substitui deleteConversation)
   getChatHistory,
-  clearAllConversations,
+  clearUserConversations, // Nova
+  clearAllConversations, // Mantida (para uso admin se necessário)
+  getGlobalStats, // Nova
   closeConnection,
-  testConnection,
-  pool,
-  registerUser,
-  loginUser
+  testConnection, // Mantida
+  pool // Exportar a pool pode ser útil para queries customizadas fora deste módulo, mas use com cautela
 };
