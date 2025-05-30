@@ -183,7 +183,8 @@ app.post('/api/chat', authenticateToken, async (req, res) => {
             }
         } else {
             const newTitle = await generateChatTitle(message, aiSettings);
-            conversation = await db.createNewConversation(newTitle);
+            // Adicionar req.user.id aqui
+            conversation = await db.createNewConversation(req.user.id, newTitle);
             isFirstMessage = true;
         }
 
@@ -295,7 +296,7 @@ app.get('/api/history', authenticateToken, async (req, res) => {
 app.get('/api/conversation/:id', authenticateToken, async (req, res) => {
     try {
         const { id } = req.params;
-        const messages = await db.getConversationMessages(id);
+        const messages = await db.getConversationMessages(req.user.id, id);
         res.json({ messages });
     } catch (error) {
         console.error('Erro ao buscar mensagens:', error);
@@ -305,7 +306,8 @@ app.get('/api/conversation/:id', authenticateToken, async (req, res) => {
 
 app.post('/api/new-conversation', authenticateToken, async (req, res) => { 
     try {
-        const conversation = await db.createNewConversation('Nova Conversa');
+        // Adicionar req.user.id aqui
+        const conversation = await db.createNewConversation(req.user.id, 'Nova Conversa');
         console.log('Nova conversa criada via API:', conversation.id);
         res.json(conversation);
     } catch (error) {
@@ -327,17 +329,20 @@ app.delete('/api/conversation/:id', authenticateToken, async (req, res) => {
     }
 });
 
-app.put('/api/conversation/:id/title', async (req, res) => {
+// CORRIGIDO
+app.put('/api/conversation/:id/title', authenticateToken, async (req, res) => {
     try {
         const { id } = req.params;
         const { title } = req.body;
-        
+        const userId = req.user.id; // Obter userId do token
+
         if (!title || title.trim().length === 0) {
             return res.status(400).json({ error: 'Título não pode estar vazio' });
         }
-        
-        await db.updateConversationTitle(id, title.trim());
-        console.log(`✅ Título da conversa ${id} atualizado`);
+
+        // Passar userId para a função do banco de dados
+        await db.updateConversationTitle(userId, id, title.trim());
+        console.log(`✅ Título da conversa ${id} atualizado pelo usuário ${userId}`);
         res.json({ success: true, title: title.trim() });
     } catch (error) {
         console.error('❌ Erro ao atualizar título:', error);
@@ -379,11 +384,13 @@ app.get('/api/verify-token', authenticateToken, (req, res) => {
   });
 });
 
-app.get('/api/export', async (req, res) => {
+// Linha 313 (aproximadamente) - CORRIGIDO
+app.get('/api/export', authenticateToken, async (req, res) => { // Adicionado authenticateToken
     try {
         console.log('📥 Exportando dados completos...');
-        
-        const allConversations = await db.getChatHistory();
+
+        // Adicionar req.user.id aqui
+        const allConversations = await db.getChatHistory(req.user.id);
         
         const fullConversations = await Promise.all(
             allConversations.map(async (conv) => {
@@ -428,7 +435,8 @@ app.get('/api/export', async (req, res) => {
     }
 });
 
-app.delete('/api/clear-all', async (req, res) => {
+// Linha 341 (aproximadamente) - CORRIGIDO (Mínimo)
+app.delete('/api/clear-all', authenticateToken, async (req, res) => {
     try {
         console.log('🗑️ Limpando todos os dados...');
         await db.clearAllConversations();

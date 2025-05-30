@@ -116,14 +116,15 @@ async function saveMessage(conversationId, role, content, aiSettings = null) {
   }
 }
 
-async function getConversationMessages(conversationId) {
+async function getConversationMessages(userId, conversationId) {
   try {
     const res = await pool.query(`
-      SELECT id, conversation_id, role, content, timestamp, ai_settings 
-      FROM messages 
-      WHERE conversation_id = $1 
-      ORDER BY timestamp ASC`, 
-      [conversationId]
+      SELECT m.id, m.conversation_id, m.role, m.content, m.timestamp, m.ai_settings
+      FROM messages m
+      JOIN conversations c ON m.conversation_id = c.id
+      WHERE m.conversation_id = $1 AND c.user_id = $2  -- Adiciona verificação de user_id
+      ORDER BY m.timestamp ASC`,
+      [conversationId, userId]
     );
     
     return res.rows.map(row => ({
@@ -138,17 +139,17 @@ async function getConversationMessages(conversationId) {
   }
 }
 
-async function updateConversationTitle(conversationId, newTitle) {
+async function updateConversationTitle(userId, conversationId, newTitle) { // Adicionar userId
   try {
     const now = new Date().toISOString();
-    
+
     await pool.query(`
-      UPDATE conversations 
-      SET title = $1, updated_at = $2 
-      WHERE id = $3`, 
-      [newTitle, now, conversationId]
+      UPDATE conversations
+      SET title = $1, updated_at = $2
+      WHERE id = $3 AND user_id = $4`, // Adicionar verificação de user_id
+      [newTitle, now, conversationId, userId]
     );
-    
+
   } catch (error) {
     console.error('Erro ao atualizar título:', error);
     throw error;
