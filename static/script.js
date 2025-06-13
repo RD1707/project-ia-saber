@@ -1,7 +1,6 @@
 document.addEventListener('DOMContentLoaded', () => {
     console.log('🚀 SABER Chat inicializando...');
 
-    // Elementos da interface
     const loginScreen = document.getElementById('loginScreen');
     const loginForm = document.getElementById('login-form');
     const registerForm = document.getElementById('register-form');
@@ -16,21 +15,18 @@ document.addEventListener('DOMContentLoaded', () => {
     const chatMessages = document.getElementById('chat-messages');
     const thinkingIndicator = document.getElementById('thinking');
 
-    // Elementos da Sidebar (adicione os que faltam se necessário)
     const newChatBtn = document.getElementById('newChatBtn');
     const sidebar = document.getElementById('sidebar');
     const sidebarOverlay = document.getElementById('sidebarOverlay');
-    const headerMenuBtn = document.getElementById('headerMenuBtn'); // Para mobile
-    const sidebarToggle = document.getElementById('sidebarToggle'); // Botão de configurações na sidebar
+    const headerMenuBtn = document.getElementById('headerMenuBtn'); 
+    const sidebarToggle = document.getElementById('sidebarToggle'); 
 
-    // Elementos do Modal de Configurações (adicione os que faltam se necessário)
     const settingsModalOverlay = document.getElementById('settingsModalOverlay');
     const settingsCloseBtn = document.getElementById('settingsCloseBtn');
     const settingsTabs = document.querySelectorAll('.settings-tab');
     const settingsPanels = document.querySelectorAll('.settings-panel');
 
 
-    // Inicialize estas variáveis
     let currentConversationId = null;
     let chatHistory = {
         today: [],
@@ -63,7 +59,6 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
 
-    // Configurar abas de login/registro
     if (loginTabs && loginTabs.length > 0) {
         loginTabs.forEach(tab => {
             tab.addEventListener('click', () => {
@@ -131,7 +126,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Registro
     if (registerForm) {
         registerForm.addEventListener('submit', async (e) => {
             e.preventDefault();
@@ -175,7 +169,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
 
-    // Função de inicialização principal da aplicação
     async function initializeApp() {
         const token = localStorage.getItem('token');
 
@@ -202,7 +195,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             const userData = await res.json();
-            showWelcomeOrChatInterface(userData); // Mostra welcome screen, carrega histórico
+            showWelcomeOrChatInterface(userData); 
 
         } catch (err) {
             console.error('Falha na verificação do token:', err);
@@ -212,14 +205,11 @@ document.addEventListener('DOMContentLoaded', () => {
             if (appContainer) appContainer.style.display = 'none';
         }
 
-        // Configura todos os event listeners e UI restante
         setupEventListeners();
         setupSidebar();
-        // setupAuth(); // A função setupAuth não está definida no script original, remover ou implementar.
         loadUserSettings();
         applySettings();
-        // carregarHistorico(); // Movido para showWelcomeOrChatInterface
-        updateAboutStats(); // Pode precisar ser chamado após o histórico ser carregado
+        updateAboutStats();
     }
 
     function setupEventListeners() {
@@ -236,10 +226,9 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         if (newChatBtn) {
-            newChatBtn.addEventListener('click', async () => { // Tornar anônima async
+            newChatBtn.addEventListener('click', async () => { 
                 await criarNovaConversa();
-                 // Após criar a nova conversa, garantir que a tela de chat seja exibida
-                if (currentConversationId) { // Só muda de tela se a conversa foi criada
+                if (currentConversationId) {
                     if (welcomeScreen) welcomeScreen.style.display = 'none';
                     if (appContainer) appContainer.style.display = 'flex';
                 }
