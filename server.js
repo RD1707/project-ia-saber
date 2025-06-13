@@ -3,24 +3,23 @@ const cors = require('cors');
 const path = require('path');
 require('dotenv').config();
 const { CohereClient } = require('cohere-ai');
-const db = require('./db'); // Assume que db.js está corrigido e no mesmo diretório
+const db = require('./db'); 
 const jwt = require('jsonwebtoken');
 
 const app = express();
-const PORT = process.env.PORT || 3000; // Usa a porta do ambiente ou 3000
+const PORT = process.env.PORT || 3000; 
 
 db.initializeDatabase().catch(error => {
     console.error("Falha crítica ao inicializar banco de dados:", error);
-    process.exit(1); // Encerra se o banco não puder ser inicializado
+    process.exit(1);
 });
 
 app.use(cors());
 app.use(express.json());
 
-// Middleware de autenticação
 function authenticateToken(req, res, next) {
     const authHeader = req.headers['authorization'];
-    const token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
+    const token = authHeader && authHeader.split(' ')[1]; 
 
     if (!token) {
         return res.status(401).json({ error: 'Acesso não autorizado: Token não fornecido.' });
@@ -31,7 +30,7 @@ function authenticateToken(req, res, next) {
             console.error('Erro na verificação do token:', err.message);
             return res.status(403).json({ error: 'Token inválido ou expirado.' });
         }
-        req.user = user; // Adiciona os dados do usuário (payload do token) à requisição
+        req.user = user; //
         next();
     });
 }
@@ -71,10 +70,10 @@ Crie um título objetivo.
 Responda APENAS com o título, sem aspas ou explicações:`;
 
         const response = await cohere.generate({
-            model: 'command-r-plus', // Verifique se este é o modelo mais adequado/disponível
+            model: 'command-r-plus', 
             prompt: titlePrompt,
             maxTokens: 15, // Suficiente para um título curto
-            temperature: Math.min(aiSettings.temperature || 0.3, 0.7), // Ajuste a temperatura se necessário
+            temperature: Math.min(aiSettings.temperature || 0.3, 0.7),
             stopSequences: ['\n', '"', "'"],
         });
 
@@ -84,10 +83,10 @@ Responda APENAS com o título, sem aspas ou explicações:`;
         }
 
         if (!generatedTitle || generatedTitle.length < 3) {
-            const words = firstMessage.split(' ').slice(0, 5).join(' '); // Um pouco menos de palavras para o fallback
+            const words = firstMessage.split(' ').slice(0, 5).join(' ');
             generatedTitle = words.substring(0, 40) + (words.length > 40 ? '...' : '');
         }
-        return generatedTitle || "Conversa Iniciada"; // Fallback final
+        return generatedTitle || "Conversa Iniciada"; 
     } catch (error) {
         console.error('Erro ao gerar título com Cohere:', error.message);
         const words = firstMessage.split(' ').slice(0, 5).join(' ');
@@ -107,15 +106,12 @@ function filterContextHistory(messages, contextMemory) {
     return recentMessages;
 }
 
-// Servir arquivos estáticos (HTML, CSS, JS do frontend)
 app.use(express.static(path.join(__dirname, 'static')));
 
-// Rota principal para servir o index.html
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'static', 'index.html'));
 });
 
-// Rota de Registro
 app.post('/api/register', async (req, res) => {
     const { name, email, password } = req.body;
     if (!name || !email || !password) {
@@ -133,7 +129,6 @@ app.post('/api/register', async (req, res) => {
     }
 });
 
-// Rota de Login
 app.post('/api/login', async (req, res) => {
     const { email, password } = req.body;
     if (!email || !password) {
@@ -164,7 +159,6 @@ app.post('/api/login', async (req, res) => {
     }
 });
 
-// Rota Principal do Chat
 app.post('/api/chat', authenticateToken, async (req, res) => {
     try {
         const { message, conversationId: providedConversationId, settings } = req.body;
@@ -178,7 +172,7 @@ app.post('/api/chat', authenticateToken, async (req, res) => {
 
         const aiSettings = { ...DEFAULT_AI_SETTINGS, ...(settings || {}) };
 
-        console.log('📨 Chat request recebido:', {
+        console.log(' Chat request recebido:', {
             userId: userId,
             message: message.substring(0, 50) + '...',
             conversationId: providedConversationId || 'novo',
@@ -188,12 +182,9 @@ app.post('/api/chat', authenticateToken, async (req, res) => {
         let currentConversationId = providedConversationId;
 
         if (currentConversationId) {
-            // Verifica se a conversa pertence ao usuário (db.getConversationMessages já faz isso)
+
             const messages = await db.getConversationMessages(userId, currentConversationId);
-            // Se messages for null ou undefined (indicando que a conversa não existe ou não pertence ao usuário), tratar como nova.
-            // A função getConversationMessages deve retornar um array vazio se a conversa existe e não tem mensagens,
-            // ou lançar um erro/retornar nulo se a conversa não pertencer ao usuário ou não existir.
-            // Assumindo que getConversationMessages retorna array vazio se a conversa é válida mas sem mensagens.
+
             if (messages.length === 0) {
                 // Conversa existe mas está vazia, pode ser a primeira mensagem real.
                 isFirstMessageInExistingConversation = true;
@@ -210,14 +201,14 @@ app.post('/api/chat', authenticateToken, async (req, res) => {
                 conversation = { id: currentConversationId, title: convDetails.title };
             }
         } else {
-            // Nenhuma conversationId fornecida, criar uma nova
+
             const newTitle = await generateChatTitle(message, aiSettings);
             conversation = await db.createNewConversation(userId, newTitle);
             currentConversationId = conversation.id; // Atualiza o ID da conversa atual
             isFirstMessageInExistingConversation = true; // É a primeira mensagem da nova conversa
         }
 
-        console.log('💬 Usando conversa:', currentConversationId, "Título:", conversation.title);
+        console.log(' Usando conversa:', currentConversationId, "Título:", conversation.title);
 
         // Busca todas as mensagens da conversa atual para o histórico do prompt
         const allMessages = await db.getConversationMessages(userId, currentConversationId);
@@ -294,10 +285,7 @@ app.get('/api/conversation/:id', authenticateToken, async (req, res) => {
         const { id } = req.params;
         const userId = req.user.id;
         const messages = await db.getConversationMessages(userId, id);
-        // getConversationMessages já verifica se a conversa pertence ao usuário.
-        // Se retornar null ou array vazio e deveria ter mensagens, pode indicar que não pertence.
-        // No db.js, getConversationMessages agora junta com conversations para verificar user_id.
-        if (messages === null) { // Se getConversationMessages for ajustado para retornar null se não pertencer/existir
+        if (messages === null) { 
             return res.status(404).json({ error: "Conversa não encontrada ou acesso não permitido." });
         }
         res.json({ messages, conversationId: id }); // Retorna messages e o ID da conversa
@@ -325,9 +313,7 @@ app.delete('/api/conversation/:id', authenticateToken, async (req, res) => {
     try {
         const { id } = req.params;
         const userId = req.user.id;
-        // IMPORTANTE: Modificar db.deleteConversation para aceitar userId e verificar propriedade
-        // await db.deleteConversation(userId, id);
-        // Por enquanto, se db.deleteConversation SÓ aceita conversationId:
+
         const affectedRows = await db.deleteConversationIfOwned(userId, id); // CRIAR esta função em db.js
         if (affectedRows === 0) {
             return res.status(404).json({ error: "Conversa não encontrada ou você não tem permissão para deletá-la." });
@@ -339,7 +325,6 @@ app.delete('/api/conversation/:id', authenticateToken, async (req, res) => {
     }
 });
 
-// Rota para atualizar título da conversa
 app.put('/api/conversation/:id/title', authenticateToken, async (req, res) => {
     try {
         const { id } = req.params; // ID da conversa
@@ -354,10 +339,10 @@ app.put('/api/conversation/:id/title', authenticateToken, async (req, res) => {
          if (affectedRows === 0) { // Supondo que updateConversationTitle retorne o número de linhas afetadas
             return res.status(404).json({ error: "Conversa não encontrada ou você não tem permissão para alterá-la." });
         }
-        console.log(`✅ Título da conversa ${id} atualizado para "${title.trim()}" pelo usuário ${userId}`);
+        console.log(` Título da conversa ${id} atualizado para "${title.trim()}" pelo usuário ${userId}`);
         res.json({ success: true, title: title.trim() });
     } catch (error) {
-        console.error('❌ Erro ao atualizar título da conversa:', error.message);
+        console.error(' Erro ao atualizar título da conversa:', error.message);
         res.status(500).json({ error: 'Erro ao atualizar título da conversa.' });
     }
 });
@@ -422,24 +407,23 @@ app.get('/api/export', authenticateToken, async (req, res) => {
         console.log(`Dados exportados com sucesso para o usuário: ${userId}, ${fullConversations.length} conversas.`);
 
     } catch (error) {
-        console.error(`❌ Erro ao exportar dados para usuário ${req.user?.id}:`, error.message);
+        console.error(` Erro ao exportar dados para usuário ${req.user?.id}:`, error.message);
         res.status(500).json({ error: 'Erro ao exportar seus dados.' });
     }
 });
 
-// Rota para limpar TODAS AS CONVERSAS DO USUÁRIO LOGADO
 app.delete('/api/clear-all', authenticateToken, async (req, res) => {
     try {
         const userId = req.user.id;
-        console.log(`🗑️ Limpando todas as conversas para o usuário: ${userId}`);
+        console.log(` Limpando todas as conversas para o usuário: ${userId}`);
         // IMPORTANTE: Criar db.clearUserConversations(userId) em db.js
         // que deleta conversas ONDE user_id = userId.
         // A função db.clearAllConversations() como está deleta TUDO de todos.
         await db.clearUserConversations(userId); // Esta função precisa ser criada em db.js
         res.json({ success: true, message: 'Todas as suas conversas foram limpas.' });
-        console.log(`✅ Conversas limpas com sucesso para o usuário: ${userId}`);
+        console.log(` Conversas limpas com sucesso para o usuário: ${userId}`);
     } catch (error) {
-        console.error(`❌ Erro ao limpar conversas para usuário ${req.user?.id}:`, error.message);
+        console.error(` Erro ao limpar conversas para usuário ${req.user?.id}:`, error.message);
         res.status(500).json({ error: 'Erro ao limpar suas conversas.' });
     }
 });
@@ -447,16 +431,16 @@ app.delete('/api/clear-all', authenticateToken, async (req, res) => {
 
 // Tratamento de Encerramento Gracioso
 process.on('SIGINT', async () => {
-    console.log('🔄 Encerrando servidor (SIGINT)...');
+    console.log(' Encerrando servidor (SIGINT)...');
     await db.closeConnection();
     process.exit(0);
 });
 process.on('SIGTERM', async () => {
-    console.log('🔄 Encerrando servidor (SIGTERM)...');
+    console.log(' Encerrando servidor (SIGTERM)...');
     await db.closeConnection();
     process.exit(0);
 });
 
 app.listen(PORT, () => {
-    console.log(`🚀 Servidor SABER rodando na porta ${PORT}`);
+    console.log(` Servidor SABER rodando na porta ${PORT}`);
 });
